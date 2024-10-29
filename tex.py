@@ -9,6 +9,7 @@ import re
 import uuid
 import mimetypes
 from PIL import ImageGrab, Image
+import pyperclip
 import io
 
 
@@ -202,12 +203,15 @@ class TexClient:
             "content": text
         }
 
-        response = requests.post(url, json=payload, params=params)
+        cookie = self.get_cookie()
+        response = requests.post(url, json=payload, params=params, cookies=cookie)
         r = response.json()
 
         if response.status_code == 200 and r.get("status") and r["status"]["code"] == 1:
-            print(r["result"])
-            return r["result"]
+            result = r["result"]
+
+            print(result)
+            return result
         else:
             raise Exception("润色失败，返回信息: \n" + response.text)
 
@@ -275,7 +279,9 @@ def main():
 
     # polish 子命令
     polish_parser = subparsers.add_parser("polish", help="润色提供的文本")
-    polish_parser.add_argument("text", type=str, help="需要润色的文字")
+    polish_source_group = polish_parser.add_mutually_exclusive_group(required=True)
+    polish_source_group.add_argument("-s", "--str", type=str, help="需要润色的字符串，不能含特殊字符")
+    polish_source_group.add_argument("-c", "--clip", action="store_true", help="从剪切板读取文本进行润色")
 
     args = parser.parse_args()
     client = TexClient()
@@ -296,8 +302,18 @@ def main():
             client.ocr(mime_type, binary_data)
 
     elif args.command == "polish":
-        text_to_polish = args.text
-        client.polish(text_to_polish)
+        if args.str:
+            text_to_polish = args.str
+            if text_to_polish:
+                client.polish(text_to_polish)
+            else:
+                raise ValueError("输入的文本为空")
+        elif args.clip:
+            text_to_polish = pyperclip.paste()
+            if text_to_polish:
+                client.polish(text_to_polish)
+            else:
+                raise ValueError("剪切板中没有文本")
 
 
 if __name__ == "__main__":
