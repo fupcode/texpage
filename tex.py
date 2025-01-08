@@ -287,6 +287,9 @@ def main():
     client = TexClient()
 
     # 根据不同的子命令执行相应的功能
+    if args.command is None:
+        parser.print_help()
+        return
     if args.command == "init":
         client.input_config()
 
